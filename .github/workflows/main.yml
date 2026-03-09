@@ -115,14 +115,21 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Create Release
-    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish Release
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/v2.1'
     needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get short SHA
+        id: version
+        run: echo "sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -135,8 +142,24 @@ jobs:
             zip -r "${dir%/}.zip" "$dir"
           done
 
-      - name: Create GitHub Release
+      - name: Delete existing rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest-build --yes || true
+          git push --delete origin latest-build || true
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest-build
+          name: "Latest Build (${{ steps.version.outputs.sha }})"
+          body: |
+            Automated release built from the latest commit.
+
+            **Branch:** `${{ github.ref_name }}`
+            **Commit:** ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
           files: artifacts/*.zip
-          generate_release_notes: true
+          prerelease: false
+          draft: false
+          make_latest: true
