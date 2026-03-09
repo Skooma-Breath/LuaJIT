@@ -65,6 +65,8 @@ jobs:
 
       - name: Build
         run: make -j$(sysctl -n hw.logicalcpu)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
 
       - name: Verify binary
         run: |
@@ -93,13 +95,15 @@ jobs:
 
       - name: Build
         working-directory: src
+        shell: cmd
         run: msvcbuild.bat
 
       - name: Verify binary
         working-directory: src
+        shell: cmd
         run: |
-          .\luajit.exe -v
-          .\luajit.exe -e "print('Hello from LuaJIT!')"
+          luajit.exe -v
+          luajit.exe -e "print('Hello from LuaJIT!')"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
